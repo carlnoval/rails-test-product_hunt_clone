@@ -1,0 +1,10 @@
+# filename must be product(s) with s
+# format below is yml
+
+# skello is a product with name "Skello", tagline "Manage your staff calendar"
+skello:
+  name: "Skello"
+  tagline: "Manage your staff calendar"
+roadstr:
+  name: "Roadstr"
+  tagline: "Rent a vintage car"

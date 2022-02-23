@@ -92,3 +92,155 @@ end
 # **
 # Run tests with:
 rails test:system
+
+# Sample test result
+# Capybara starting Puma...
+# * Version 5.6.2 , codename: Birdie's Version
+# * Min threads: 0, max threads: 4
+# * Listening on http://127.0.0.1:61240
+# .
+
+# Finished in 3.091102s, 0.3235 runs/s, 0.3235 assertions/s.
+# 1 runs, 1 assertions, 0 failures, 0 errors, 0 skips
+
+# **
+# Database: in dev is different from test
+# when running test, db in test env must be configured to satisfy tests, which is not ideal in dev/prod
+# Inorder to test properly, test database must be populated
+# fixtures below solves this issue
+
+# **
+# Fixtures
+# - way to insert data to the db through yml file
+# - does not use active record and instead users sql inserts thats why its faster
+# - test needs to be as fast as possible
+# test/fixtures/products.yml
+# skello:
+#   name: "Skello"
+#   tagline: "Manage your staff calendar"
+# roadstr:
+#   name: "Roadstr"
+#   tagline: "Rent a vintage car"
+
+# **
+# Regfining tests
+# Many Assertions in one test case: controversial topic
+
+test "visiting the index" do
+  visit root_url
+  assert_selector "h1", text: "Awesome Products"
+  # can also be added as a separate test case
+  assert_selector ".card-product", count: Product.count # extra added test
+end
+
+test "cards count matches" do
+  visit root_url
+  assert_selector ".card-product", count: Product.count
+end
+
+# **
+# erb in fixtures is supported allowing randomness on test db
+# caveat: this can cause errors not seen from dev/prod
+# products.yml
+  # <% 1.upto(5) do |i| %>
+  # product_<%= i %>:
+  #   name: <%= Faker::Company.name %>
+  #   tagline: <%= Faker::Company.catch_phrase %>
+  # <% end %>
+
+# **
+# TDD - new feature add a product
+# touch test/fixtures/users.yml
+# test/fixtures/users.yml
+# george:
+#   email: "george@abitbol.com"
+#   first_name: "George"
+#   last_name: "Abitbol"
+
+# test/system/products_test.rb
+# class ProductsTest < ApplicationSystemTestCase
+#   # [...]
+#   test "lets a signed in user create a new product" do
+#     login_as users(:george) # login_as is a method from Warden, Warden test helpers `include` from test_helper.rb
+#     visit "/products/new"
+#     # save_and_open_screenshot
+
+#     fill_in "product_name", with: "Le Wagon"
+#     fill_in "product_tagline", with: "Change your life: Learn to code"
+#     # save_and_open_screenshot
+
+#     click_on 'Create Product'
+#     # save_and_open_screenshot
+
+#     # Should be redirected to Home with new product
+#     assert_equal root_path, page.current_path
+#     assert_text "Change your life: Learn to code"
+#   end
+# end
+
+# testing above with
+rails test:system
+# yeilds:
+# E
+
+# Error:
+# ProductsTest#test_lets_a_signed_in_user_create_a_new_product:
+# Capybara::ElementNotFound: Unable to find field "product_name" that is not disabled
+#     test/system/products_test.rb:29:in `block in <class:ProductsTest>'
+
+# cause there's no route, no view
+
+# udpate route
+Rails.application.routes.draw do
+  devise_for :users
+  root to: 'products#index'
+  resources :products, only: [:new, :create]
+  # For details on the DSL available within this file, see https://guides.rubyonrails.org/routing.html
+end
+
+# one by one uncomment the images to see the errors in the app and build peice by peice
+# after routes the error is `The action new could not be found...`
+
+# comment images out after fixing the error
+
+# app/controllers/products_controller.rb
+class ProductsController < ApplicationController
+  # [...]
+  def new
+    @product = Product.new
+  end
+end
+
+# app/views/products/new.html.erb
+# <h2>Add a product</h2>
+
+# <%= simple_form_for @product do |f| %>
+#   <%= f.input :name %>
+#   <%= f.input :tagline %>
+#   <%= f.submit %>
+# <% end %>
+
+# app/controllers/products_controller.rb
+class ProductsController < ApplicationController
+  def create
+    @product = Product.new(product_params)
+
+    if @product.save
+      redirect_to root_path
+    else
+      render "new"
+    end
+  end
+
+  private
+
+  def product_params
+    params.require(:product).permit(:name, :tagline)
+  end
+end
+
+# all three system tests should pass by now
+
+# **
+# Unit Testing
+
